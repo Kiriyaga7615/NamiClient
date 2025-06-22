@@ -32,7 +32,7 @@ public abstract class MixinChatScreen {
 
     @Unique private float animationOffset = 20f;
     @Unique private long lastUpdateTime = System.currentTimeMillis();
-    @Unique private List<String> suggestions = new ArrayList<>();
+    @Unique private List<String> suggestions;
     @Unique private String selectedSuggestion = "";
     @Unique private int selectedSuggestionIndex = 0;
     @Shadow @Final private TextFieldWidget chatField;
@@ -117,7 +117,7 @@ public abstract class MixinChatScreen {
         String cmdName = parts.length > 0 ? parts[0] : "";
 
         String prefix = COMMAND_MANAGER.getPrefix();
-        suggestions = COMMAND_MANAGER.getSuggestions(cmdName);
+        suggestions = new ArrayList<>(COMMAND_MANAGER.getSuggestions(cmdName));
 
         if (!suggestions.isEmpty() && selectedSuggestionIndex < suggestions.size()) {
             selectedSuggestion = suggestions.get(selectedSuggestionIndex);
