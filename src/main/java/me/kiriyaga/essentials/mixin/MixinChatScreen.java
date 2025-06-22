@@ -30,8 +30,6 @@ import static me.kiriyaga.essentials.Essentials.*;
 @Mixin(ChatScreen.class)
 public abstract class MixinChatScreen {
 
-    @Unique
-    private boolean isClosing = false;
     @Unique private float animationOffset = 20f;
     @Unique private long lastUpdateTime = System.currentTimeMillis();
     @Unique private List<String> suggestions = new ArrayList<>();
@@ -42,7 +40,6 @@ public abstract class MixinChatScreen {
 
     @Inject(method = "init", at = @At("HEAD"))
     private void onInit(CallbackInfo ci) {
-        isClosing = false;
         animationOffset = 20f;
         lastUpdateTime = System.currentTimeMillis();
         ChatAnimationHelper.setAnimationOffset(animationOffset);
@@ -50,8 +47,8 @@ public abstract class MixinChatScreen {
 
     @Inject(method = "removed", at = @At("HEAD"))
     private void onRemoved(CallbackInfo ci) {
-        isClosing = true;
-        lastUpdateTime = System.currentTimeMillis();
+        animationOffset = 20f;
+        ChatAnimationHelper.setAnimationOffset(animationOffset);
     }
 
     @Inject(method = "render", at = @At("HEAD"))
@@ -59,12 +56,7 @@ public abstract class MixinChatScreen {
         long now = System.currentTimeMillis();
         float elapsed = (now - lastUpdateTime) / 1000f;
         lastUpdateTime = now;
-
-        if (!isClosing) {
-            animationOffset = Math.max(animationOffset - elapsed * 60f, 0f);
-        } else {
             animationOffset = Math.min(animationOffset + elapsed * 60f, 20f);
-        }
 
         ChatAnimationHelper.setAnimationOffset(animationOffset);
     }
