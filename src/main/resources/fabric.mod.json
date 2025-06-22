@@ -20,7 +20,7 @@
   ],
   "accessWidener": "META-INF/essentials.accesswidener",
   "depends": {
-    "fabricloader": ">=0.16.14",
+    "fabricloader": ">=0.16.10",
     "fabric": "*",
     "minecraft": "1.21.4"
   }
