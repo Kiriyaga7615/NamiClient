@@ -29,6 +29,7 @@ public class HUDModule extends Module {
 
     public final IntSetting updateInterval = addSetting(new IntSetting("interval", 1, 1, 20));
 
+    public final BoolSetting chatAnimation = addSetting(new BoolSetting("chat animation", true));
     public final BoolSetting watermarkEnabled = addSetting(new BoolSetting("watermark", true));
     public final BoolSetting armorEnabled = addSetting(new BoolSetting("armor", true));
     public final BoolSetting totemsEnabled = addSetting(new BoolSetting("totems", true));

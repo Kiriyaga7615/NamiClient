@@ -1,6 +1,6 @@
 package me.kiriyaga.essentials.mixin;
 
-import net.minecraft.network.message.ChatVisibility;
+import me.kiriyaga.essentials.feature.module.impl.client.HUDModule;
 import net.minecraft.client.gui.screen.ChatScreen;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.widget.TextFieldWidget;
@@ -25,33 +25,24 @@ import java.util.stream.Collectors;
 import me.kiriyaga.essentials.util.ChatAnimationHelper;
 import me.kiriyaga.essentials.feature.module.impl.client.ColorModule;
 
-import static me.kiriyaga.essentials.Essentials.COMMAND_MANAGER;
-import static me.kiriyaga.essentials.Essentials.MODULE_MANAGER;
-import static me.kiriyaga.essentials.Essentials.LOGGER;
-import static me.kiriyaga.essentials.Essentials.MINECRAFT;
+import static me.kiriyaga.essentials.Essentials.*;
 
 @Mixin(ChatScreen.class)
 public abstract class MixinChatScreen {
 
     @Unique
-    private float animationOffset = 20f;
-    @Unique
-    private long lastUpdateTime = System.currentTimeMillis();
-    @Unique
-    private List<String> suggestions = new ArrayList<>();
-    @Unique
-    private String selectedSuggestion = "";
-    @Unique
-    private int selectedSuggestionIndex = 0;
-    @Shadow
-    @Final
-    private TextFieldWidget chatField;
-    @Unique
-    private boolean drawSuggestions = false;
-
+    private boolean isClosing = false;
+    @Unique private float animationOffset = 20f;
+    @Unique private long lastUpdateTime = System.currentTimeMillis();
+    @Unique private List<String> suggestions = new ArrayList<>();
+    @Unique private String selectedSuggestion = "";
+    @Unique private int selectedSuggestionIndex = 0;
+    @Shadow @Final private TextFieldWidget chatField;
+    @Unique private boolean drawSuggestions = false;
 
     @Inject(method = "init", at = @At("HEAD"))
     private void onInit(CallbackInfo ci) {
+        isClosing = false;
         animationOffset = 20f;
         lastUpdateTime = System.currentTimeMillis();
         ChatAnimationHelper.setAnimationOffset(animationOffset);
@@ -59,8 +50,8 @@ public abstract class MixinChatScreen {
 
     @Inject(method = "removed", at = @At("HEAD"))
     private void onRemoved(CallbackInfo ci) {
-        animationOffset = 20f;
-        ChatAnimationHelper.setAnimationOffset(animationOffset);
+        isClosing = true;
+        lastUpdateTime = System.currentTimeMillis();
     }
 
     @Inject(method = "render", at = @At("HEAD"))
@@ -69,10 +60,12 @@ public abstract class MixinChatScreen {
         float elapsed = (now - lastUpdateTime) / 1000f;
         lastUpdateTime = now;
 
-        if (animationOffset > 0f) {
-            animationOffset -= elapsed * 60f;
-            if (animationOffset < 0f) animationOffset = 0f;
+        if (!isClosing) {
+            animationOffset = Math.max(animationOffset - elapsed * 60f, 0f);
+        } else {
+            animationOffset = Math.min(animationOffset + elapsed * 60f, 20f);
         }
+
         ChatAnimationHelper.setAnimationOffset(animationOffset);
     }
 
@@ -82,8 +75,10 @@ public abstract class MixinChatScreen {
             shift = At.Shift.BEFORE
     ))
     private void beforeInputRender(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        context.getMatrices().push();
-        context.getMatrices().translate(0, animationOffset, 0);
+        if (MODULE_MANAGER.getModule(HUDModule.class).chatAnimation.get()) {
+            context.getMatrices().push();
+            context.getMatrices().translate(0, animationOffset, 0);
+        }
     }
 
     @Inject(method = "render", at = @At(
@@ -92,23 +87,26 @@ public abstract class MixinChatScreen {
             shift = At.Shift.AFTER
     ))
     private void afterInputRender(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
-        context.getMatrices().pop();
+        if (MODULE_MANAGER.getModule(HUDModule.class).chatAnimation.get()) {
+            context.getMatrices().pop();
+        }
     }
 
     @Redirect(method = "render", at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/gui/DrawContext;fill(IIIII)V"
     ))
-        private void redirectFill(DrawContext context, int x1, int y1, int x2, int y2, int color) {
-            int width = MINECRAFT.getWindow().getScaledWidth();
-            int height = MINECRAFT.getWindow().getScaledHeight();
+    private void redirectFill(DrawContext context, int x1, int y1, int x2, int y2, int color) {
+        int width = MINECRAFT.getWindow().getScaledWidth();
+        int height = MINECRAFT.getWindow().getScaledHeight();
+        boolean useAnimation = MODULE_MANAGER.getModule(HUDModule.class).chatAnimation.get();
 
-            if (x1 == 2 && x2 == width - 2 && y1 >= height - 14 && y2 <= height - 2) {
-                context.fill(x1, (int)(y1 + animationOffset), x2, (int)(y2 + animationOffset), color);
-            } else {
-                context.fill(x1, y1, x2, y2, color);
-            }
+        if (useAnimation && x1 == 2 && x2 == width - 2 && y1 >= height - 14 && y2 <= height - 2) {
+            context.fill(x1, (int)(y1 + animationOffset), x2, (int)(y2 + animationOffset), color);
+        } else {
+            context.fill(x1, y1, x2, y2, color);
         }
+    }
 
     @Inject(method = "render", at = @At("TAIL"))
     private void onRenderSuggestions(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
@@ -117,15 +115,14 @@ public abstract class MixinChatScreen {
         Color secondary = colorModule.getStyledSecondaryColor();
         Color textCol = colorModule.getStyledTextColor();
         Color textColInverted = new Color(
-            255 - textCol.getRed(),
-            255 - textCol.getGreen(),
-            255 - textCol.getBlue()
+                255 - textCol.getRed(),
+                255 - textCol.getGreen(),
+                255 - textCol.getBlue()
         );
 
         String text = chatField.getText();
         String[] parts = text.split("\\s+");
         String cmdName = parts.length > 0 ? parts[0] : "";
-
 
         String prefix = COMMAND_MANAGER.getPrefix();
         suggestions = COMMAND_MANAGER.getSuggestions(cmdName);
@@ -134,60 +131,46 @@ public abstract class MixinChatScreen {
             selectedSuggestion = suggestions.get(selectedSuggestionIndex);
         } else {
             selectedSuggestion = "";
-            selectedSuggestionIndex = 0; // Reset to valid state just in case
+            selectedSuggestionIndex = 0;
         }
+
         if (cmdName.startsWith(prefix)) {
             chatField.setEditableColor(Color.WHITE.getRGB());
         } else {
-            chatField.setEditableColor(14737632); // Reset to default
+            chatField.setEditableColor(14737632);
         }
 
-        if (selectedSuggestion.isEmpty()) {
-            return;
-        }
+        if (selectedSuggestion.isEmpty()) return;
 
-        chatField.setEditableColor(14737632); // Reset to default
-
-        // LOGGER.info(drawSuggestions);
-        // LOGGER.info(selectedSuggestion);
-        // LOGGER.info("X:" + chatField.getX());
-        // LOGGER.info("Y:" + chatField.getY());
-
+        chatField.setEditableColor(14737632);
 
         if (cmdName.startsWith(prefix) && suggestions.size() > 1 ){
             drawSuggestions = true;
-        } else if (cmdName.startsWith(prefix) && cmdName == selectedSuggestion) {
+        } else if (cmdName.equals(selectedSuggestion)) {
             drawSuggestions = false;
             return;
         }
-        if (!text.startsWith(prefix)) {
+
+        if (!text.startsWith(prefix) || suggestions.size() < 1) {
             drawSuggestions = false;
             return;
         }
-        if (suggestions.size() < 1) {
-            drawSuggestions = false;
-            return;
-        }
+
         if (drawSuggestions) {
             int width = chatField.getWidth();
             int height = chatField.getHeight();
 
-            // Filter out the selected suggestion
             List<String> suggestionsRest = suggestions.stream()
-                .filter(suggestion -> !suggestion.equals(selectedSuggestion))
-                .collect(Collectors.toList());
+                    .filter(s -> !s.equals(selectedSuggestion))
+                    .collect(Collectors.toList());
 
-
-            // Coordinates for drawing
             int x = 10 + (width / 16);
             int y = chatField.getY();
 
-            // Coordinates for selectedSuggestion
             int _x = chatField.getX();
             int _y = chatField.getY();
-            int spacing = 6; // Adjust spacing as needed
+            int spacing = 6;
 
-            // Draw the selected suggestion first
             int selectedColor = new Color(255, 255, 255, 128).getRGB();
             context.drawText(MINECRAFT.textRenderer, selectedSuggestion, _x, _y, selectedColor, true);
 
@@ -198,7 +181,7 @@ public abstract class MixinChatScreen {
 
                 if (isSelected) {
                     color = Color.LIGHT_GRAY.darker().getRGB();
-                    float scale = 1.01f; // Slightly increase size
+                    float scale = 1.01f;
 
                     context.getMatrices().push();
                     context.getMatrices().translate(x, y, 0);
@@ -217,67 +200,50 @@ public abstract class MixinChatScreen {
         } else {
             suggestions = new ArrayList<>();
             drawSuggestions = false;
-            return;
         }
     }
-    
+
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
     private void onKeyPressed(int keyCode, int scanCode, int modifiers, CallbackInfoReturnable<Boolean> cir) {
-        if (suggestions.isEmpty()) {
-            drawSuggestions = false;
-            return;
-        }
+        if (!drawSuggestions || suggestions.isEmpty()) return;
 
         if (keyCode == GLFW.GLFW_KEY_DOWN) {
             selectedSuggestionIndex = (selectedSuggestionIndex + 1) % suggestions.size();
-            cir.setReturnValue(false);
-            return;
+            cir.setReturnValue(true);
         } else if (keyCode == GLFW.GLFW_KEY_UP) {
             selectedSuggestionIndex = (selectedSuggestionIndex - 1 + suggestions.size()) % suggestions.size();
-            cir.setReturnValue(false);
-            return;
+            cir.setReturnValue(true);
         } else if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
-            suggestions = new ArrayList<>();
+            suggestions.clear();
             selectedSuggestionIndex = 0;
             drawSuggestions = false;
-            return;
+            cir.setReturnValue(true);
         } else if (keyCode == GLFW.GLFW_KEY_TAB) {
-            if (!suggestions.isEmpty()) {
-                if (suggestions.size() == 1) {
-                    // Autocomplete if only one suggestion
-                    String selected = suggestions.get(0);
-                    chatField.setText(selected);
-                    chatField.setCursor(selected.length(), false);
-                    selectedSuggestionIndex = 0;
-                    drawSuggestions = false;
-                } else {
-                    // Cycle through multiple suggestions
-                    selectedSuggestionIndex = (selectedSuggestionIndex + 1) % suggestions.size();
-                }
-
-                cir.setReturnValue(true);
+            if (suggestions.size() == 1) {
+                String selected = suggestions.get(0);
+                chatField.setText(selected);
+                chatField.setCursor(selected.length(), false);
+                selectedSuggestionIndex = 0;
+                drawSuggestions = false;
+            } else {
+                selectedSuggestionIndex = (selectedSuggestionIndex + 1) % suggestions.size();
             }
+            cir.setReturnValue(true);
         } else if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
             String text = chatField.getText();
             String[] parts = text.split("\\s+");
             String cmdName = parts.length > 0 ? parts[0] : "";
             String selected = suggestions.get(selectedSuggestionIndex);
 
-            if (cmdName.equals(selected)) {
-                suggestions = new ArrayList<>();
-                drawSuggestions = false;
-                selectedSuggestionIndex = 0;
-                return;
-            } else {
-                // Suggestion is different — apply it as new input and close suggestions
+            if (!cmdName.equals(selected)) {
                 chatField.setText(selected);
                 chatField.setCursor(selected.length(), false);
-
-                suggestions = new ArrayList<>();
-                drawSuggestions = false;
-                selectedSuggestionIndex = 0;
             }
+
+            suggestions.clear();
+            drawSuggestions = false;
+            selectedSuggestionIndex = 0;
+            cir.setReturnValue(true);
         }
     }
 }
-
