@@ -73,28 +73,28 @@ public class NametagsModule extends Module {
                 if ((player == mc.player && !freecamModule.isEnabled()) || player.isRemoved())
                     continue;
 
-                renderNametag2D(player, formatter.formatPlayer(player), color, camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getDynamicDeltaTicks());
+                renderNametag2D(player, formatter.formatPlayer(player), color, camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
             }
         }
 
         if (showAnimals.get()) {
             for (Entity animal : EntityUtils.getEntities(EntityUtils.EntityTypeCategory.PASSIVE)) {
                 if (animal.isRemoved()) continue;
-                renderNametag2D(animal, formatter.formatEntity(animal), 0xFFAAAAAA, camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getDynamicDeltaTicks());
+                renderNametag2D(animal, formatter.formatEntity(animal), 0xFFAAAAAA, camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
             }
         }
 
         if (showEnemies.get()) {
             for (Entity hostile : EntityUtils.getEntities(EntityUtils.EntityTypeCategory.HOSTILE)) {
                 if (hostile.isRemoved()) continue;
-                renderNametag2D(hostile, formatter.formatEntity(hostile), 0xFFFF5555, camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getDynamicDeltaTicks());
+                renderNametag2D(hostile, formatter.formatEntity(hostile), 0xFFFF5555, camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
             }
         }
 
         if (showItems.get()) {
             for (ItemEntity item : EntityUtils.getDroppedItems()) {
                 if (item.isRemoved() || item.getStack().isEmpty()) continue;
-                renderNametag2D(item, formatter.formatItem(item), 0xFFFF5555, camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getDynamicDeltaTicks());
+                renderNametag2D(item, formatter.formatItem(item), 0xFFFF5555, camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
             }
         }
     }

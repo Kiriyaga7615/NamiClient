@@ -237,7 +237,7 @@ public class HUDModule extends Module {
 
         int totemCount = 0;
 
-        for (ItemStack stack : mc.player.getInventory().getMainStacks()) {
+        for (ItemStack stack : mc.player.getInventory().main) {
             if (stack.getItem() == net.minecraft.item.Items.TOTEM_OF_UNDYING) {
                 totemCount += stack.getCount();
             }

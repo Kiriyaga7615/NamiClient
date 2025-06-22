@@ -11,7 +11,6 @@ import me.kiriyaga.essentials.feature.module.impl.movement.SprintModule;
 import me.kiriyaga.essentials.feature.module.impl.render.*;
 import me.kiriyaga.essentials.feature.module.impl.world.AutoFovModule;
 import me.kiriyaga.essentials.feature.module.impl.world.AutoGammaModule;
-import me.kiriyaga.essentials.feature.module.impl.world.EChestFarmerModule;
 import me.kiriyaga.essentials.feature.module.impl.world.JoinAnnounceModule;
 
 import java.util.ArrayList;
@@ -53,7 +52,6 @@ public class ModuleManager {
         registerModule(new JoinAnnounceModule());
         registerModule(new AutoFovModule());
         registerModule(new AutoGammaModule());
-        registerModule(new EChestFarmerModule());
 
         LOGGER.info("Registered " + modules.size() + " modules");
     }
