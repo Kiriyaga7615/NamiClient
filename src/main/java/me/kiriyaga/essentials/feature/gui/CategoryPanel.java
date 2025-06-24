@@ -10,6 +10,7 @@ import java.awt.*;
 import java.util.List;
 import java.util.Set;
 
+import static me.kiriyaga.essentials.Essentials.MINECRAFT;
 import static me.kiriyaga.essentials.Essentials.MODULE_MANAGER;
 import static me.kiriyaga.essentials.feature.gui.ClickGuiScreen.GUI_ALPHA;
 
@@ -64,10 +65,12 @@ public class CategoryPanel {
             int borderColor = toRGBA(primary);
             int bgColor = toRGBA(new Color(30, 30, 30, GUI_ALPHA));
 
-            context.fill(x, y + HEADER_HEIGHT, x + BORDER_WIDTH, y + totalHeight, borderColor);
-            context.fill(x + WIDTH - BORDER_WIDTH, y + HEADER_HEIGHT, x + WIDTH, y + totalHeight, borderColor);
-            context.fill(x, y + totalHeight - BORDER_WIDTH, x + WIDTH, y + totalHeight, borderColor);
-            context.fill(x + BORDER_WIDTH, y + HEADER_HEIGHT, x + WIDTH - BORDER_WIDTH, y + totalHeight - BORDER_WIDTH, bgColor);
+            context.fill(x, y + HEADER_HEIGHT, x + WIDTH, y + totalHeight, bgColor);
+
+            context.fill(x, y + HEADER_HEIGHT, x + WIDTH, y + HEADER_HEIGHT + 1, borderColor);
+            context.fill(x, y + totalHeight - 1, x + WIDTH, y + totalHeight, borderColor);
+            context.fill(x, y + HEADER_HEIGHT, x + 1, y + totalHeight, borderColor);
+            context.fill(x + WIDTH - 1, y + HEADER_HEIGHT, x + WIDTH, y + totalHeight, borderColor);
 
             int moduleY = y + HEADER_HEIGHT + ModulePanel.MODULE_SPACING;
             for (Module module : modules) {

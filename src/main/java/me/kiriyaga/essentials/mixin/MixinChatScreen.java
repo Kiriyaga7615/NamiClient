@@ -56,7 +56,8 @@ public abstract class MixinChatScreen {
         long now = System.currentTimeMillis();
         float elapsed = (now - lastUpdateTime) / 1000f;
         lastUpdateTime = now;
-            animationOffset = Math.min(animationOffset + elapsed * 60f, 20f);
+
+        animationOffset = Math.max(animationOffset - elapsed * 60f, 0f);
 
         ChatAnimationHelper.setAnimationOffset(animationOffset);
     }

@@ -32,6 +32,7 @@ public class HUDModule extends Module {
     public final BoolSetting chatAnimation = addSetting(new BoolSetting("chat animation", true));
     public final BoolSetting watermarkEnabled = addSetting(new BoolSetting("watermark", true));
     public final BoolSetting armorEnabled = addSetting(new BoolSetting("armor", true));
+    public final BoolSetting speedEnabled = addSetting(new BoolSetting("speed", true));
     public final BoolSetting totemsEnabled = addSetting(new BoolSetting("totems", true));
     public final BoolSetting coordsEnabled = addSetting(new BoolSetting("coordinates", true));
     public final BoolSetting freecamCords = addSetting(new BoolSetting("freecam spoof ", true));
@@ -41,15 +42,22 @@ public class HUDModule extends Module {
     public final BoolSetting lagWarningEnabled = addSetting(new BoolSetting("lag warning", false));
 
     private int tickCounter = 0;
-    private static final int PADDING = 2;
+    private static final int PADDING = 1;
 
     private Text coordsText = Text.empty();
     private Text facingText = Text.empty();
     private Text watermarkText = Text.empty();
     private Text fpsText = Text.empty();
     private Text pingText = Text.empty();
+    private Text speedText = Text.empty();
     private boolean serverLagging = false;
     private int primaryRGB;
+
+    private static final int SPEED_SAMPLES = 80;
+    private final double[] speedSamples = new double[SPEED_SAMPLES];
+    private int speedSampleIndex = 0;
+    private boolean speedBufferFilled = false;
+    private double lastX = 0, lastY = 0, lastZ = 0;
 
 
     public HUDModule() {
@@ -71,21 +79,15 @@ public class HUDModule extends Module {
         Color styled = getColorModule().getStyledPrimaryColor();
         primaryRGB = styled.getRGB() & 0x00FFFFFF;
 
-
         if (watermarkEnabled.get()) {
             watermarkText = Text.of(NAME + " " + VERSION);
         }
 
         if (coordsEnabled.get()) {
-
-            double x;
-            double y;
-            double z;
-
+            double x, y, z;
             FreecamModule freecamModule = MODULE_MANAGER.getModule(FreecamModule.class);
 
-
-            if (freecamCords.get() && freecamModule.isEnabled()){
+            if (freecamCords.get() && freecamModule.isEnabled()) {
                 x = freecamModule.getX();
                 y = freecamModule.getY();
                 z = freecamModule.getZ();
@@ -95,9 +97,7 @@ public class HUDModule extends Module {
                 z = mc.player.getZ();
             }
 
-
             coordsText = formatFancyCoords(x, y, z);
-
         }
 
         if (facingEnabled.get()) {
@@ -112,10 +112,38 @@ public class HUDModule extends Module {
         if (pingEnabled.get()) {
             int ping = PING_MANAGER.getPing();
             pingText = Text.literal("Ping: ").setStyle(Style.EMPTY.withColor(primaryRGB))
-                    .append(Text.literal(ping < 0 ? "N/A" : Integer.toString(ping)).setStyle(Style.EMPTY.withColor(Formatting.WHITE)));        }
+                    .append(Text.literal(ping < 0 ? "N/A" : Integer.toString(ping)).setStyle(Style.EMPTY.withColor(Formatting.WHITE)));
+        }
 
         if (lagWarningEnabled.get()) {
             serverLagging = PING_MANAGER.isConnectionUnstable();
+        }
+
+        if (speedEnabled.get()) {
+            double dx = mc.player.getX() - lastX;
+            double dz = mc.player.getZ() - lastZ;
+
+            double instantSpeed = Math.sqrt(dx * dx + dz * dz) * 20;
+
+            speedSamples[speedSampleIndex] = instantSpeed;
+            speedSampleIndex = (speedSampleIndex + 1) % SPEED_SAMPLES;
+
+            if (speedSampleIndex == 0) speedBufferFilled = true;
+
+            int count = speedBufferFilled ? SPEED_SAMPLES : speedSampleIndex;
+            double sum = 0;
+            for (int i = 0; i < count; i++) {
+                sum += speedSamples[i];
+            }
+            double averageSpeed = count > 0 ? sum / count : 0;
+
+            String speedStr = formatNumber(averageSpeed);
+            speedText = Text.literal("Speed: ").setStyle(Style.EMPTY.withColor(primaryRGB))
+                    .append(Text.literal(speedStr).setStyle(Style.EMPTY.withColor(Formatting.WHITE)));
+
+            lastX = mc.player.getX();
+            lastY = mc.player.getY();
+            lastZ = mc.player.getZ();
         }
     }
 
@@ -175,15 +203,21 @@ public class HUDModule extends Module {
         int y = screenHeight - MINECRAFT.textRenderer.fontHeight;
         y -= (int) animationOffset;
 
-        if (fpsEnabled.get() && !fpsText.getString().isEmpty()) {
-            int width = MINECRAFT.textRenderer.getWidth(fpsText);
-            event.getDrawContext().drawText(MINECRAFT.textRenderer, fpsText, screenWidth - width - PADDING, y, color, true);
+        if (speedEnabled.get() && !speedText.getString().isEmpty()) {
+            int width = MINECRAFT.textRenderer.getWidth(speedText);
+            event.getDrawContext().drawText(MINECRAFT.textRenderer, speedText, screenWidth - width - PADDING, y, color, true);
             y -= MINECRAFT.textRenderer.fontHeight + 2;
         }
 
         if (pingEnabled.get() && !pingText.getString().isEmpty()) {
             int width = MINECRAFT.textRenderer.getWidth(pingText);
             event.getDrawContext().drawText(MINECRAFT.textRenderer, pingText, screenWidth - width - PADDING, y, color, true);
+            y -= MINECRAFT.textRenderer.fontHeight + 2;
+        }
+
+        if (fpsEnabled.get() && !fpsText.getString().isEmpty()) {
+            int width = MINECRAFT.textRenderer.getWidth(fpsText);
+            event.getDrawContext().drawText(MINECRAFT.textRenderer, fpsText, screenWidth - width - PADDING, y, color, true);
             y -= MINECRAFT.textRenderer.fontHeight + 2;
         }
     }
@@ -304,9 +338,9 @@ public class HUDModule extends Module {
 
         MutableText result = Text.literal("XYZ ").setStyle(primaryStyle);
         result.append(formatNumberStyled(x, whiteStyle, grayStyle));
-        result.append(Text.literal(" ").setStyle(primaryStyle));
+        result.append(Text.literal(", ").setStyle(primaryStyle));
         result.append(formatNumberStyled(y, whiteStyle, grayStyle));
-        result.append(Text.literal(" ").setStyle(primaryStyle));
+        result.append(Text.literal(", ").setStyle(primaryStyle));
         result.append(formatNumberStyled(z, whiteStyle, grayStyle));
 
         if (isOverworld || isNether) {
@@ -320,19 +354,28 @@ public class HUDModule extends Module {
     }
 
     private MutableText formatNumberStyled(double val, Style digitStyle, Style separatorStyle) {
-        String formatted = formatNumber(val); // "123.0"
+        String formatted = formatNumber(val); // -123.4
         int dotIndex = formatted.indexOf('.');
 
-        if (dotIndex == -1) {
-            return Text.literal(formatted).setStyle(digitStyle);
+        MutableText text = Text.literal("");
+
+        if (formatted.startsWith("-")) {
+            text.append(Text.literal("-").setStyle(separatorStyle));
+            formatted = formatted.substring(1);
+            dotIndex--;
         }
 
-        MutableText text = Text.literal(formatted.substring(0, dotIndex)).setStyle(digitStyle);
+        if (dotIndex == -1) {
+            return text.append(Text.literal(formatted).setStyle(digitStyle));
+        }
+
+        text.append(Text.literal(formatted.substring(0, dotIndex)).setStyle(digitStyle));
         text.append(Text.literal(".").setStyle(separatorStyle));
         text.append(Text.literal(formatted.substring(dotIndex + 1)).setStyle(digitStyle));
 
         return text;
     }
+
 
 
     private String formatNumber(double val) {

@@ -20,7 +20,7 @@ public class SettingPanel {
     public static final int HEIGHT = 15;
     private static final int PADDING = 3;
     public static final int INNER_PADDING = 2;
-    private static final int WIDTH = 130 - CategoryPanel.BORDER_WIDTH * 2 - INNER_PADDING * 2;
+    private static final int WIDTH = 120 - CategoryPanel.BORDER_WIDTH * 2 - INNER_PADDING * 2;
     private static final int SLIDER_HEIGHT = 2;
     private static final int MODULE_SPACING = 2;
 
@@ -35,9 +35,6 @@ public class SettingPanel {
     public static int renderSettings(DrawContext context, TextRenderer textRenderer, Module module, int x, int y, int mouseX, int mouseY) {
         List<Setting<?>> settings = module.getSettings();
         int curY = y + MODULE_SPACING;
-
-        Color bgColor = new Color(20, 20, 20, GUI_ALPHA);
-        context.fill(x - INNER_PADDING, y, x + WIDTH + INNER_PADDING, y + getSettingsHeight(module), toRGBA(bgColor));
 
         for (Setting<?> setting : settings) {
             render(context, textRenderer, setting, x, curY, mouseX, mouseY);
@@ -73,8 +70,17 @@ public class SettingPanel {
 
             context.fill(checkboxX, checkboxY, checkboxX + checkboxSize, checkboxY + checkboxSize, toRGBA(new Color(60, 60, 60)));
             if (boolSetting.get()) {
-                context.fill(checkboxX + 1, checkboxY + 1, checkboxX + checkboxSize - 1, checkboxY + checkboxSize - 1, toRGBA(primary));
+                String symbol = "✓";
+                int symbolWidth = textRenderer.getWidth(symbol);
+                int symbolHeight = 8;
+
+                int centerX = checkboxX + (checkboxSize - symbolWidth) / 2;
+                int centerY = checkboxY + (checkboxSize - symbolHeight) / 2;
+
+                context.drawText(textRenderer, symbol, centerX, centerY, toRGBA(textCol), false);
             }
+
+
 
             return;
         } else if (setting instanceof ColorSetting colorSetting) {
