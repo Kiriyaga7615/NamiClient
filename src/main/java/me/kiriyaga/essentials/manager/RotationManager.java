@@ -215,39 +215,6 @@ public class RotationManager {
             rotationYaw = wrapDegrees(rotationYaw + jitterYawOffset);
             rotationPitch = MathHelper.clamp(rotationPitch + jitterPitchOffset, -90f, 90f);
         }
-
-        // this should be here since if we standing still and not moving it will cause not sending packets at all
-        if (isRotating()) {
-            float spoofYaw = getRotationYaw();
-            float spoofPitch = getRotationPitch();
-
-            float yawDiff = Math.abs(wrapDegrees(spoofYaw - lastSentSpoofYaw2));
-            float pitchDiff = Math.abs(spoofPitch - lastSentSpoofPitch2);
-
-            if (yawDiff > 0.001f || pitchDiff > 0.001f) {
-                lastSentSpoofYaw2 = spoofYaw;
-                lastSentSpoofPitch2 = spoofPitch;
-
-                Vec3d pos = MINECRAFT.player.getPos();
-
-                MINECRAFT.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.Full(
-                        pos.x,
-                        pos.y,
-                        pos.z,
-                        spoofYaw,
-                        spoofPitch,
-                        MINECRAFT.player.isOnGround(),
-                        false
-                ));
-
-                MINECRAFT.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.LookAndOnGround(
-                        spoofYaw,
-                        spoofPitch,
-                        MINECRAFT.player.isOnGround(),
-                        false
-                ));
-            }
-        }
     }
 
 
