@@ -28,9 +28,11 @@ import static me.kiriyaga.essentials.Essentials.*;
 
 @Mixin(WorldRenderer.class)
 
-public class MixinWorldRenderer {
+public abstract class MixinWorldRenderer {
 
     @Shadow @Final private Set<BlockEntity> noCullingBlockEntities;
+
+    @Shadow protected abstract void translucencySort(Vec3d cameraPos);
 
     @Inject(method = "render", at = @At("RETURN"))
     private void onRenderTail(
@@ -43,7 +45,7 @@ public class MixinWorldRenderer {
             Matrix4f projectionMatrix,
             CallbackInfo ci
     ) {
-        float tickDelta = tickCounter.getTickProgress(true);
+        float tickDelta = tickCounter.getTickDelta(true);
 
         MatrixStack matrices = new MatrixStack();
         matrices.push();

@@ -243,11 +243,9 @@ public class RotationManager {
             if (packet instanceof PlayerMoveC2SPacket.Full full) {
                 event.cancel();
                 mc.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.Full(
-                        new Vec3d(
-                                full.getX(pos.x),
-                                full.getY(pos.y),
-                                full.getZ(pos.z)
-                        ),
+                        full.getX(pos.x),
+                        full.getY(pos.y),
+                        full.getZ(pos.z),
                         spoofYaw,
                         spoofPitch,
                         full.isOnGround(),

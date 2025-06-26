@@ -77,37 +77,38 @@ public class NametagsModule extends Module {
                 if ((player == MINECRAFT.player && !freecamModule.isEnabled()) || player.isRemoved())
                     continue;
 
-                renderNametag2D(player, formatter.formatPlayer(player), color, camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getDynamicDeltaTicks());
+                renderNametag2D(player, formatter.formatPlayer(player), color, camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
             }
         }
 
         if (showAnimals.get()) {
             for (Entity animal : ENTITY_MANAGER.getPassive()) {
                 if (!animal.isAlive()) continue;
-                renderNametag2D(animal, formatter.formatEntity(animal), COLOR_PASSIVE.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getDynamicDeltaTicks());
+                renderNametag2D(animal, formatter.formatEntity(animal), COLOR_PASSIVE.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
             }
         }
 
         if (showEnemies.get()) {
             for (Entity hostile : ENTITY_MANAGER.getHostile()) {
                 if (!hostile.isAlive()) continue;
-                renderNametag2D(hostile, formatter.formatEntity(hostile), COLOR_HOSTILE.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getDynamicDeltaTicks());
+                renderNametag2D(hostile, formatter.formatEntity(hostile), COLOR_HOSTILE.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
             }
         }
 
         if (showNeutrals.get()) {
             for (Entity neutral : ENTITY_MANAGER.getNeutral()) {
                 if (!neutral.isAlive()) continue;
-                renderNametag2D(neutral, formatter.formatEntity(neutral), COLOR_NEUTRAL.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getDynamicDeltaTicks());
+                renderNametag2D(neutral, formatter.formatEntity(neutral), COLOR_NEUTRAL.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
             }
         }
 
-        if (showItems.get()) {
-            for (ItemEntity item : ENTITY_MANAGER.getDroppedItems()) {
-                if (item.isRemoved() || item.getStack().isEmpty()) continue;
-                renderNametag2D(item, formatter.formatItem(item), COLOR_ITEM.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getDynamicDeltaTicks());
+            if (showItems.get()) {
+                for (ItemEntity item : ENTITY_MANAGER.getDroppedItems()) {
+                    if (item.isRemoved() || item.getStack().isEmpty()) continue;
+                    renderNametag2D(item, formatter.formatItem(item), COLOR_ITEM.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
+                }
             }
-        }
+
     }
 
     private void renderNametag2D(Entity entity, Text text, int color,
