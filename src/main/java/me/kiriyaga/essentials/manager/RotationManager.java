@@ -231,7 +231,9 @@ public class RotationManager {
                 Vec3d pos = MINECRAFT.player.getPos();
 
                 MINECRAFT.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.Full(
-                        pos,
+                        pos.x,
+                        pos.y,
+                        pos.z,
                         spoofYaw,
                         spoofPitch,
                         MINECRAFT.player.isOnGround(),
