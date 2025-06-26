@@ -30,18 +30,13 @@ import static me.kiriyaga.essentials.Essentials.*;
 
 public class AuraModule extends Module {
 
-    public final DoubleSetting attackRange = addSetting(new DoubleSetting("attack", 3.0, 1.0, 5));
-    public final DoubleSetting rotationRange = addSetting(new DoubleSetting("rotation", 3.6, 2.0, 6.0));
     public final BoolSetting swordOnly = addSetting(new BoolSetting("weap only", false));
     public final BoolSetting render = addSetting(new BoolSetting("render", true));
     public final BoolSetting tpsSync = addSetting(new BoolSetting("tps sync", true));
     public final BoolSetting multiTask = addSetting(new BoolSetting("multitask", false));
-    public final DoubleSetting minTicksExisted = addSetting(new DoubleSetting("age", 12, 0.0, 20.0));
     private final IntSetting rotationPriority = addSetting(new IntSetting("rotation", 5, 1, 30));
-    public final BoolSetting targetPlayers = addSetting(new BoolSetting("players", true));
-    public final BoolSetting targetPeacefuls = addSetting(new BoolSetting("peacefuls", false));
-    public final BoolSetting targetHostiles = addSetting(new BoolSetting("hostiles", true));
-    public final BoolSetting targetNeutrals = addSetting(new BoolSetting("neutrals", false));
+
+    public final DoubleSetting preRotate = addSetting(new DoubleSetting("pre rotate", 0.2, 0.0, 1.0));
 
     private Entity currentTarget = null;
 
@@ -59,7 +54,7 @@ public class AuraModule extends Module {
             if (!(stack.getItem() instanceof AxeItem || stack.isIn(ItemTags.SWORDS))) return;
         }
 
-        Entity target = getTarget(rotationRange.get());
+        Entity target = ENTITY_MANAGER.getTarget();
         if (target == null) {
             currentTarget = null;
             return;
@@ -67,74 +62,39 @@ public class AuraModule extends Module {
 
         currentTarget = target;
 
-        int yaw = getYawToEntity(MINECRAFT.player, target);
-        int pitch = getPitchToEntity(MINECRAFT.player, target);
-
-        RotationManager.RotationRequest request = new RotationManager.RotationRequest(AuraModule.class.getName(), rotationPriority.get(), yaw, pitch);
-        ROTATION_MANAGER.submitRequest(request);
-
-        double distanceToTarget = MINECRAFT.player.squaredDistanceTo(target);
-        if (distanceToTarget > attackRange.get() * attackRange.get()) {
-            return;
-        }
-
         float cooldown = MINECRAFT.player.getAttackCooldownProgress(0f);
-        if (tpsSync.get()) {
-            float tps = 20f;
-            if (MINECRAFT.getServer() != null) {
-                double tickTimeNs = MINECRAFT.getServer().getAverageTickTime();
-                double tickTimeMs = tickTimeNs / 1_000_000.0;
-                tps = (float) Math.min(20.0, 1000.0 / tickTimeMs);
-            }
-            float tpsFactor = 20f / tps;
-            if (cooldown < 1.0f * tpsFactor) return;
-        } else {
-            if (cooldown < 1.0f) return;
+        float tps = 20f;
+        if (tpsSync.get() && MINECRAFT.getServer() != null) {
+            double tickTimeMs = MINECRAFT.getServer().getAverageTickTime() / 1_000_000.0;
+            tps = (float) Math.min(20.0, 1000.0 / tickTimeMs);
         }
 
+        float ticksUntilReady = (1.0f - cooldown) * tps;
+        if (ticksUntilReady <= preRotate.get() * tps) {
+            int yaw = getYawToEntity(MINECRAFT.player, target);
+            int pitch = getPitchToEntity(MINECRAFT.player, target);
+            ROTATION_MANAGER.submitRequest(new RotationManager.RotationRequest(AuraModule.class.getName(), rotationPriority.get(), yaw, pitch));
+        }
+
+        if (cooldown < (tpsSync.get() ? 1.0f * (20f / tps) : 1.0f)) return;
         if (!ROTATION_MANAGER.isRequestCompleted(AuraModule.class.getName())) return;
 
         MINECRAFT.interactionManager.attackEntity(MINECRAFT.player, target);
         MINECRAFT.player.swingHand(net.minecraft.util.Hand.MAIN_HAND);
     }
 
-
-
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onRender3D(Render3DEvent event) {
-        if (!render.get()) return;
-        if (currentTarget == null) return;
+        if (!render.get() || currentTarget == null) return;
 
         ColorModule colorModule = MODULE_MANAGER.getModule(ColorModule.class);
         drawBox(currentTarget, colorModule.getStyledPrimaryColor(), event.getMatrices(), event.getTickDelta());
-    }
-
-
-    private Entity getTarget(double range) {
-        ClientPlayerEntity player = MINECRAFT.player;
-        List<Entity> candidates = new ArrayList<>();
-
-        if (targetPlayers.get()) candidates.addAll(EntityUtils.getPlayers());
-        if (targetPeacefuls.get()) candidates.addAll(EntityUtils.getEntities(EntityUtils.EntityTypeCategory.PASSIVE));
-        if (targetHostiles.get()) candidates.addAll(EntityUtils.getEntities(EntityUtils.EntityTypeCategory.HOSTILE));
-        if (targetNeutrals.get()) candidates.addAll(EntityUtils.getEntities(EntityUtils.EntityTypeCategory.NEUTRAL));
-
-        candidates.removeIf(e -> e == player
-                || e.isRemoved()
-                || !e.isAlive()
-                || e.squaredDistanceTo(player) > range * range
-                || e.age < minTicksExisted.get().intValue());
-
-        return candidates.stream()
-                .min((e1, e2) -> Double.compare(e1.squaredDistanceTo(player), e2.squaredDistanceTo(player)))
-                .orElse(null);
     }
 
     private void drawBox(Entity entity, Color color, MatrixStack matrices, float partialTicks) {
         double interpX = entity.lastRenderX + (entity.getX() - entity.lastRenderX) * partialTicks;
         double interpY = entity.lastRenderY + (entity.getY() - entity.lastRenderY) * partialTicks;
         double interpZ = entity.lastRenderZ + (entity.getZ() - entity.lastRenderZ) * partialTicks;
-
         Box box = entity.getBoundingBox().offset(interpX - entity.getX(), interpY - entity.getY(), interpZ - entity.getZ());
         RenderUtil.drawBoxFilled(matrices, box, new Color(color.getRed(), color.getGreen(), color.getBlue(), 75));
     }
@@ -142,19 +102,14 @@ public class AuraModule extends Module {
     public static int getYawToEntity(Entity from, Entity to) {
         double dx = to.getX() - from.getX();
         double dz = to.getZ() - from.getZ();
-        double yaw = Math.toDegrees(Math.atan2(dz, dx)) - 90.0;
-        int wrapped = wrapDegrees((int) Math.round(yaw));
-        return wrapped;
+        return wrapDegrees((int) Math.round(Math.toDegrees(Math.atan2(dz, dx)) - 90.0));
     }
 
     public static int getPitchToEntity(Entity from, Entity to) {
         double dx = to.getX() - from.getX();
         double dy = to.getY() + to.getEyeHeight(to.getPose()) - (from.getY() + from.getEyeHeight(from.getPose()));
         double dz = to.getZ() - from.getZ();
-        double distance = Math.sqrt(dx * dx + dz * dz);
-        double pitch = -Math.toDegrees(Math.atan2(dy, distance));
-        int pitchInt = (int) Math.round(pitch);
-        return pitchInt;
+        return (int) Math.round(-Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz))));
     }
 
     private static int wrapDegrees(int angle) {

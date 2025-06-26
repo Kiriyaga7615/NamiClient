@@ -47,35 +47,35 @@ public class ESPModule extends Module {
         ColorModule colorModule = MODULE_MANAGER.getModule(ColorModule.class);
 
         if (showPlayers.get()) {
-            for (Entity player : EntityUtils.getOtherPlayers()) {
+            for (Entity player : ENTITY_MANAGER.getOtherPlayers()) {
                 if (player.isRemoved()) continue;
                 drawBox(player, colorModule.getStyledPrimaryColor(), matrices, event.getTickDelta());
             }
         }
 
         if (showPeacefuls.get()) {
-            for (Entity entity : EntityUtils.getEntities(EntityUtils.EntityTypeCategory.PASSIVE)) {
+            for (Entity entity : ENTITY_MANAGER.getPassive()) {
                 if (!entity.isAlive()) continue;
                 drawBox(entity, COLOR_PASSIVE, matrices, event.getTickDelta());
             }
         }
 
         if (showNeutrals.get()) {
-            for (Entity entity : EntityUtils.getEntities(EntityUtils.EntityTypeCategory.NEUTRAL)) {
+            for (Entity entity : ENTITY_MANAGER.getNeutral()) {
                 if (!entity.isAlive()) continue;
                 drawBox(entity, COLOR_NEUTRAL, matrices, event.getTickDelta());
             }
         }
 
         if (showHostiles.get()) {
-            for (Entity entity : EntityUtils.getEntities(EntityUtils.EntityTypeCategory.HOSTILE)) {
+            for (Entity entity : ENTITY_MANAGER.getHostile()) {
                 if (!entity.isAlive()) continue;
                 drawBox(entity, COLOR_HOSTILE, matrices, event.getTickDelta());
             }
         }
 
         if (showItems.get()) {
-            for (ItemEntity item : EntityUtils.getDroppedItems()) {
+            for (ItemEntity item :  ENTITY_MANAGER.getDroppedItems()) {
                 if (item.isRemoved()) continue;
                 drawBox(item, COLOR_ITEM, matrices, event.getTickDelta());
             }

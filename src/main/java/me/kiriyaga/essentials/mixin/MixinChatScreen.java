@@ -198,19 +198,31 @@ public abstract class MixinChatScreen {
 
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
     private void onKeyPressed(int keyCode, int scanCode, int modifiers, CallbackInfoReturnable<Boolean> cir) {
+        String text = chatField.getText();
+        String prefix = COMMAND_MANAGER.getPrefix();
+
+        // Only run our suggestion logic if text starts with prefix
+        if (!text.startsWith(prefix)) {
+            return; // Don't cancel, just skip our logic
+        }
+
+        // Handle suggestion navigation
         if (!drawSuggestions || suggestions.isEmpty()) return;
 
         if (keyCode == GLFW.GLFW_KEY_DOWN) {
             selectedSuggestionIndex = (selectedSuggestionIndex + 1) % suggestions.size();
             cir.setReturnValue(true);
+            cir.cancel(); // This will cancel the original method execution
         } else if (keyCode == GLFW.GLFW_KEY_UP) {
             selectedSuggestionIndex = (selectedSuggestionIndex - 1 + suggestions.size()) % suggestions.size();
             cir.setReturnValue(true);
+            cir.cancel();
         } else if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
             suggestions.clear();
             selectedSuggestionIndex = 0;
             drawSuggestions = false;
             cir.setReturnValue(true);
+            cir.cancel();
         } else if (keyCode == GLFW.GLFW_KEY_TAB) {
             if (suggestions.size() == 1) {
                 String selected = suggestions.get(0);
@@ -222,8 +234,8 @@ public abstract class MixinChatScreen {
                 selectedSuggestionIndex = (selectedSuggestionIndex + 1) % suggestions.size();
             }
             cir.setReturnValue(true);
+            cir.cancel();
         } else if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
-            String text = chatField.getText();
             String[] parts = text.split("\\s+");
             String cmdName = parts.length > 0 ? parts[0] : "";
             String selected = suggestions.get(selectedSuggestionIndex);
@@ -237,6 +249,7 @@ public abstract class MixinChatScreen {
             drawSuggestions = false;
             selectedSuggestionIndex = 0;
             cir.setReturnValue(true);
+            cir.cancel();
         }
     }
 }

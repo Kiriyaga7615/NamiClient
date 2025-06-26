@@ -6,6 +6,7 @@ import me.kiriyaga.essentials.event.impl.PacketReceiveEvent;
 import me.kiriyaga.essentials.feature.module.Category;
 import me.kiriyaga.essentials.feature.module.Module;
 
+import me.kiriyaga.essentials.setting.impl.BoolSetting;
 import net.minecraft.network.packet.s2c.play.PlayerListS2CPacket;
 import net.minecraft.network.packet.s2c.play.PlayerListS2CPacket.Action;
 import net.minecraft.network.packet.s2c.play.PlayerListS2CPacket.Entry;
@@ -13,10 +14,12 @@ import net.minecraft.network.packet.s2c.play.PlayerRemoveS2CPacket;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
-import static me.kiriyaga.essentials.Essentials.CHAT_MANAGER;
-import static me.kiriyaga.essentials.Essentials.MINECRAFT;
+import static me.kiriyaga.essentials.Essentials.*;
 
 public class JoinAnnounceModule extends Module {
+
+    public final BoolSetting everyone = addSetting(new BoolSetting("everyone", false));
+    public final BoolSetting friends = addSetting(new BoolSetting("friends", true));
 
     public JoinAnnounceModule() {
         super("join announce", "Announces in chat when a player joins the server.", Category.WORLD, "joinannounce", "joins", "announce", "ощштфттщгтсу");
@@ -32,22 +35,28 @@ public class JoinAnnounceModule extends Module {
                     String playerName = entry.profile().getName();
                     if (playerName == null) continue;
 
-                    String message = "§f[§a+§f] §7" + playerName;
+                    boolean isFriend = FRIEND_MANAGER.isFriend(playerName);
 
-                    CHAT_MANAGER.sendPersistent(playerName, message);
+                    if ((everyone.get() && !isFriend) || (friends.get() && isFriend)) {
+                        String message = "§a[+] §7" + playerName;
+                        CHAT_MANAGER.sendPersistent(playerName, message);
+                    }
                 }
             }
         } else if (event.getPacket() instanceof PlayerRemoveS2CPacket leavePacket) {
             for (var playerInfo : leavePacket.profileIds()) {
                 var info = MINECRAFT.getNetworkHandler().getPlayerListEntry(playerInfo);
+                if (info == null) continue;
 
-                var playerName = info.getProfile().getName();
-
+                String playerName = info.getProfile().getName();
                 if (playerName == null) continue;
 
-                String message = "§f[§c-§f] §7" + playerName;
+                boolean isFriend = FRIEND_MANAGER.isFriend(playerName);
 
-                CHAT_MANAGER.sendPersistent(playerName, message);
+                if ((everyone.get() && !isFriend) || (friends.get() && isFriend)) {
+                    String message = "§c[-] §7" + playerName;
+                    CHAT_MANAGER.sendPersistent(playerName, message);
+                }
             }
         }
     }

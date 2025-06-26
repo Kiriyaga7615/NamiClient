@@ -38,6 +38,7 @@ public class ModuleManager {
         registerModule(new HUDModule());
         registerModule(new PingManagerModule());
         registerModule(new RotationManagerModule());
+        registerModule(new EntityManagerModule());
 
         /// COMBAT ///
         registerModule(new AutoTotemModule());

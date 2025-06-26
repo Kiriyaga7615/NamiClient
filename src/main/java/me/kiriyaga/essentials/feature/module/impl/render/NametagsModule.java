@@ -32,21 +32,26 @@ import org.joml.Vector4f;
 
 import java.awt.*;
 
-import static me.kiriyaga.essentials.Essentials.MINECRAFT;
-import static me.kiriyaga.essentials.Essentials.MODULE_MANAGER;
+import static me.kiriyaga.essentials.Essentials.*;
 
 public class NametagsModule extends Module {
 
     public final BoolSetting showPlayers = addSetting(new BoolSetting("players", true));
     public final BoolSetting showAnimals = addSetting(new BoolSetting("peacefuls", false));
     public final BoolSetting showEnemies = addSetting(new BoolSetting("hostiles", false));
+    public final BoolSetting showNeutrals = addSetting(new BoolSetting("neutrals", false));
     public final BoolSetting showItems = addSetting(new BoolSetting("items", true));
     public final BoolSetting showEquipment = addSetting(new BoolSetting("show equipment", true));
     public final EnumSetting<TextFormat> formatting = addSetting(new EnumSetting<>("format", TextFormat.None));
     public final BoolSetting showBackground = addSetting(new BoolSetting("background", true));
 
     private final NametagFormatter formatter = new NametagFormatter(this);
-    private final MinecraftClient mc = MinecraftClient.getInstance();
+
+    private static final Color COLOR_PASSIVE = new Color(211, 211, 211, 255);
+    private static final Color COLOR_NEUTRAL = new Color(255, 255, 0, 255);
+    private static final Color COLOR_HOSTILE = new Color(255, 0, 0, 255);
+    private static final Color COLOR_ITEM = new Color(211, 211, 211, 255);
+
 
     public enum TextFormat {
         None, Bold, Italic, Both
@@ -58,19 +63,18 @@ public class NametagsModule extends Module {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onRender2D(Render2DEvent event) {
-        if (mc == null || mc.world == null || mc.player == null) return;
+        if (MINECRAFT == null || MINECRAFT.world == null || MINECRAFT.player == null) return;
 
         DrawContext drawContext = event.getDrawContext();
-        MatrixStack matrices = drawContext.getMatrices();
-        Camera camera = mc.gameRenderer.getCamera();
+        Camera camera = MINECRAFT.gameRenderer.getCamera();
 
         FreecamModule freecamModule = MODULE_MANAGER.getModule(FreecamModule.class);
         ColorModule colorModule = MODULE_MANAGER.getModule(ColorModule.class);
 
         int color = new Color(colorModule.getStyledPrimaryColor().getRed(), colorModule.getStyledPrimaryColor().getGreen(), colorModule.getStyledPrimaryColor().getBlue(), 255).getRGB();
         if (showPlayers.get()) {
-            for (PlayerEntity player : EntityUtils.getPlayers()) {
-                if ((player == mc.player && !freecamModule.isEnabled()) || player.isRemoved())
+            for (PlayerEntity player : ENTITY_MANAGER.getPlayers()) {
+                if ((player == MINECRAFT.player && !freecamModule.isEnabled()) || player.isRemoved())
                     continue;
 
                 renderNametag2D(player, formatter.formatPlayer(player), color, camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
@@ -78,13 +82,23 @@ public class NametagsModule extends Module {
         }
 
         if (showAnimals.get()) {
-            for (Entity animal : EntityUtils.getEntities(EntityUtils.EntityTypeCategory.PASSIVE)) {
-                if (animal.isRemoved()) continue;
-                renderNametag2D(animal, formatter.formatEntity(animal), 0xFFAAAAAA, camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
+            for (Entity animal : ENTITY_MANAGER.getPassive()) {
+                if (!animal.isAlive()) continue;
+                renderNametag2D(animal, formatter.formatEntity(animal), COLOR_PASSIVE.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
             }
         }
 
         if (showEnemies.get()) {
+            for (Entity hostile : ENTITY_MANAGER.getHostile()) {
+                if (!hostile.isAlive()) continue;
+                renderNametag2D(hostile, formatter.formatEntity(hostile), COLOR_HOSTILE.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getDynamicDeltaTicks());
+            }
+        }
+
+        if (showNeutrals.get()) {
+            for (Entity neutral : ENTITY_MANAGER.getNeutral()) {
+                if (!neutral.isAlive()) continue;
+                renderNametag2D(neutral, formatter.formatEntity(neutral), COLOR_NEUTRAL.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getDynamicDeltaTicks());
             for (Entity hostile : EntityUtils.getEntities(EntityUtils.EntityTypeCategory.HOSTILE)) {
                 if (hostile.isRemoved()) continue;
                 renderNametag2D(hostile, formatter.formatEntity(hostile), 0xFFFF5555, camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
@@ -92,9 +106,9 @@ public class NametagsModule extends Module {
         }
 
         if (showItems.get()) {
-            for (ItemEntity item : EntityUtils.getDroppedItems()) {
+            for (ItemEntity item : ENTITY_MANAGER.getDroppedItems()) {
                 if (item.isRemoved() || item.getStack().isEmpty()) continue;
-                renderNametag2D(item, formatter.formatItem(item), 0xFFFF5555, camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
+                renderNametag2D(item, formatter.formatItem(item), COLOR_ITEM.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
             }
         }
     }
@@ -115,8 +129,8 @@ public class NametagsModule extends Module {
         int xScreen = (int) projected.x;
         int yScreen = (int) projected.y;
 
-        int textWidth = mc.textRenderer.getWidth(text);
-        int textHeight = mc.textRenderer.fontHeight;
+        int textWidth = MINECRAFT.textRenderer.getWidth(text);
+        int textHeight = MINECRAFT.textRenderer.fontHeight;
 
         int bgPadding = 1;
         if (showBackground.get()) {
@@ -131,13 +145,15 @@ public class NametagsModule extends Module {
 
             MatrixStack matrixStack = drawContext.getMatrices();
             matrixStack.push();
-            RenderUtil.rect(matrixStack, x1-1, y1-1, x2, y2, color, 1.0f); // thanks mojang
+            RenderUtil.rect(matrixStack, x1-0.25f, y1-0.25f, x2+0.25f, y2+0.25f, color, 0.25f); // thanks mojang
+
+            // x1-0.25 y1-0.25 here since layers is kinda buggy and for some reason, the x+ z- sides of rest is under the bg
 
             matrixStack.pop();
         }
 
 
-        drawContext.drawText(mc.textRenderer, text, xScreen - textWidth / 2, yScreen, color, false);
+        drawContext.drawText(MINECRAFT.textRenderer, text, xScreen - textWidth / 2, yScreen, color, false);
 
         if (entity instanceof PlayerEntity && showEquipment.get()) {
             renderItemRow2D((PlayerEntity) entity, drawContext, projected);
@@ -180,11 +196,13 @@ public class NametagsModule extends Module {
 
         Vector4f vec = new Vector4f(relX, relY, relZ, 1.0f);
 
-        Matrix4f viewProjection = new Matrix4f();
-        projectionMatrix.mul(positionMatrix, viewProjection);
+        Matrix4f viewProjection = new Matrix4f(projectionMatrix);
+        viewProjection.mul(positionMatrix); // projection * view
+        // well after tests, i figured out that issue is not in the interp, but in 2d renderers lol, TODO: rewrite that
+
         vec.mul(viewProjection);
 
-        if (vec.w <= 0.0f) return null;
+        if (vec.w < 0.001f) return null;
 
         vec.div(vec.w);
 
@@ -192,10 +210,8 @@ public class NametagsModule extends Module {
         int screenHeight = MinecraftClient.getInstance().getWindow().getScaledHeight();
 
         float screenX = (vec.x * 0.5f + 0.5f) * screenWidth;
-        float screenY = (1.0f - (vec.y * 0.5f + 0.5f)) * screenHeight;
+        float screenY = (0.5f - vec.y * 0.5f) * screenHeight;
 
         return new Vec3d(screenX, screenY, vec.z);
     }
-
-
 }

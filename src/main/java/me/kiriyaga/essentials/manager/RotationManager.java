@@ -29,15 +29,18 @@ public class RotationManager {
     private float rotationEaseFactor;
     private float rotationThreshold;
     private int ticksBeforeRelease;
-    private int holdTicksLimit;
+    private float jitterAmount;
+    private float jitterSpeed;
 
+    private int tickCount = 0;
     private boolean returning = false;
     private int ticksHolding = 0;
-    private int holdTicks = 0;
 
     public float lastSentSpoofYaw;
     public float lastSentSpoofPitch;
 
+    public float lastSentSpoofYaw2;
+    public float lastSentSpoofPitch2;
 
     private boolean spoofing = false;
 
@@ -106,7 +109,7 @@ public class RotationManager {
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public void onUpdate(PreTickEvent event) {
+    public void onPreTick(PreTickEvent event) {
         if (MINECRAFT.player == null) return;
 
         RotationManagerModule rotationModule = MODULE_MANAGER.getModule(RotationManagerModule.class);
@@ -114,7 +117,8 @@ public class RotationManager {
         rotationEaseFactor = rotationModule.rotationEaseFactor.get().floatValue();
         rotationThreshold = rotationModule.rotationThreshold.get().floatValue();
         ticksBeforeRelease = rotationModule.ticksBeforeRelease.get();
-        holdTicksLimit = rotationModule.holdTicksLimit.get();
+        jitterAmount = rotationModule.jitterAmount.get().floatValue();
+        jitterSpeed = rotationModule.jitterSpeed.get().floatValue();
 
         updateRealRotation(MINECRAFT.player.getYaw(), MINECRAFT.player.getPitch());
 
@@ -123,7 +127,6 @@ public class RotationManager {
                 activeRequest = requests.get(0);
                 rotationYaw = realYaw;
                 rotationPitch = realPitch;
-                holdTicks = 0;
                 ticksHolding = 0;
                 currentYawSpeed = 0f;
                 currentPitchSpeed = 0f;
@@ -138,7 +141,6 @@ public class RotationManager {
                 if (Math.abs(wrapDegrees(oldYaw - activeRequest.targetYaw)) > 0.001f ||
                         Math.abs(oldPitch - activeRequest.targetPitch) > 0.001f) {
                     ticksHolding = 0;
-                    holdTicks = 0;
                     updated = true;
                 }
             }
@@ -154,25 +156,19 @@ public class RotationManager {
                     requests.remove(activeRequest);
                     activeRequest = null;
                     ticksHolding = 0;
-                    holdTicks = 0;
                     returning = true;
                 }
             } else {
                 ticksHolding = 0;
-                if (!reached) holdTicks = 0;
 
-                if (holdTicks < holdTicksLimit || !reached) {
-                    currentYawSpeed = lerp(currentYawSpeed, yawDiff, rotationEaseFactor);
-                    currentPitchSpeed = lerp(currentPitchSpeed, pitchDiff, rotationEaseFactor);
+                currentYawSpeed = lerp(currentYawSpeed, yawDiff, rotationEaseFactor);
+                currentPitchSpeed = lerp(currentPitchSpeed, pitchDiff, rotationEaseFactor);
 
-                    float clampedYawSpeed = MathHelper.clamp(currentYawSpeed, -rotationSpeed, rotationSpeed);
-                    float clampedPitchSpeed = MathHelper.clamp(currentPitchSpeed, -rotationSpeed, rotationSpeed);
+                float clampedYawSpeed = MathHelper.clamp(currentYawSpeed, -rotationSpeed, rotationSpeed);
+                float clampedPitchSpeed = MathHelper.clamp(currentPitchSpeed, -rotationSpeed, rotationSpeed);
 
-                    rotationYaw = wrapDegrees(rotationYaw + clampedYawSpeed);
-                    rotationPitch = MathHelper.clamp(rotationPitch + clampedPitchSpeed, -90f, 90f);
-                } else {
-                    holdTicks++;
-                }
+                rotationYaw = wrapDegrees(rotationYaw + clampedYawSpeed);
+                rotationPitch = MathHelper.clamp(rotationPitch + clampedPitchSpeed, -90f, 90f);
             }
         } else if (returning) {
             float yawDiff = wrapDegrees(realYaw - rotationYaw);
@@ -184,8 +180,19 @@ public class RotationManager {
             float clampedYawSpeed = MathHelper.clamp(currentYawSpeed, -rotationSpeed, rotationSpeed);
             float clampedPitchSpeed = MathHelper.clamp(currentPitchSpeed, -rotationSpeed, rotationSpeed);
 
-            rotationYaw = wrapDegrees(rotationYaw + clampedYawSpeed);
-            rotationPitch = MathHelper.clamp(rotationPitch + clampedPitchSpeed, -90f, 90f);
+            if (Math.abs(yawDiff) <= rotationThreshold) {
+                rotationYaw = realYaw;
+                currentYawSpeed = 0f;
+            } else {
+                rotationYaw = wrapDegrees(rotationYaw + clampedYawSpeed);
+            }
+
+            if (Math.abs(pitchDiff) <= rotationThreshold) {
+                rotationPitch = realPitch;
+                currentPitchSpeed = 0f;
+            } else {
+                rotationPitch = MathHelper.clamp(rotationPitch + clampedPitchSpeed, -90f, 90f);
+            }
 
             boolean backReached = Math.abs(yawDiff) <= rotationThreshold && Math.abs(pitchDiff) <= rotationThreshold;
 
@@ -200,7 +207,47 @@ public class RotationManager {
             currentYawSpeed = 0f;
             currentPitchSpeed = 0f;
         }
+
+        if (isRotating()) {
+            float jitterYawOffset = jitterAmount * (float) Math.sin(tickCount * jitterSpeed);
+            float jitterPitchOffset = jitterYawOffset / 5f;
+
+            rotationYaw = wrapDegrees(rotationYaw + jitterYawOffset);
+            rotationPitch = MathHelper.clamp(rotationPitch + jitterPitchOffset, -90f, 90f);
+        }
+
+        // this should be here since if we standing still and not moving it will cause not sending packets at all
+        if (isRotating()) {
+            float spoofYaw = getRotationYaw();
+            float spoofPitch = getRotationPitch();
+
+            float yawDiff = Math.abs(wrapDegrees(spoofYaw - lastSentSpoofYaw2));
+            float pitchDiff = Math.abs(spoofPitch - lastSentSpoofPitch2);
+
+            if (yawDiff > 0.001f || pitchDiff > 0.001f) {
+                lastSentSpoofYaw2 = spoofYaw;
+                lastSentSpoofPitch2 = spoofPitch;
+
+                Vec3d pos = MINECRAFT.player.getPos();
+
+                MINECRAFT.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.Full(
+                        pos,
+                        spoofYaw,
+                        spoofPitch,
+                        MINECRAFT.player.isOnGround(),
+                        false
+                ));
+
+                MINECRAFT.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.LookAndOnGround(
+                        spoofYaw,
+                        spoofPitch,
+                        MINECRAFT.player.isOnGround(),
+                        false
+                ));
+            }
+        }
     }
+
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onPacketSend(PacketSendEvent event) {
@@ -246,8 +293,13 @@ public class RotationManager {
                 ));
             }
         } finally {
-            spoofing = false;
-            //CHAT_MANAGER.sendRaw(String.format("Visual Look: yaw=%.2f pitch=%.2f (Spoofing active)", spoofYaw, spoofPitch));
+            if (isRotating()){
+                mc.player.setBodyYaw(spoofYaw);
+                mc.player.setHeadYaw(spoofYaw);
+            }
+
+            spoofing = false; //  ebal rot rekursii
+            // CHAT_MANAGER.sendRaw(String.format("Visual Look: yaw=%.2f pitch=%.2f (Spoofing active)", spoofYaw, spoofPitch));
         }
     }
 

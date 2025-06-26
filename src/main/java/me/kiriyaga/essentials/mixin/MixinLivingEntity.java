@@ -1,6 +1,7 @@
 package me.kiriyaga.essentials.mixin;
 
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import me.kiriyaga.essentials.feature.module.impl.client.RotationManagerModule;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
@@ -13,6 +14,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import static me.kiriyaga.essentials.Essentials.MODULE_MANAGER;
 import static me.kiriyaga.essentials.Essentials.ROTATION_MANAGER;
 
 
@@ -27,7 +29,7 @@ public abstract class MixinLivingEntity extends Entity {
 
     @Inject(method = "travel", at = @At("HEAD"))
     private void travelPreHook(Vec3d movementInput, CallbackInfo ci) {
-        if ((Object)this != MinecraftClient.getInstance().player || !ROTATION_MANAGER.isRotating()) return;
+        if ((Object)this != MinecraftClient.getInstance().player || !ROTATION_MANAGER.isRotating() || !MODULE_MANAGER.getModule(RotationManagerModule.class).moveFix.get()) return;
 
         originalYaw = this.getYaw();
         originalBodyYaw = ((LivingEntityAccessor) this).getBodyYaw();
@@ -42,7 +44,7 @@ public abstract class MixinLivingEntity extends Entity {
 
     @Inject(method = "travel", at = @At("TAIL"))
     private void travelPostHook(Vec3d movementInput, CallbackInfo ci) {
-        if ((Object)this != MinecraftClient.getInstance().player || !ROTATION_MANAGER.isRotating()) return;
+        if ((Object)this != MinecraftClient.getInstance().player || !ROTATION_MANAGER.isRotating() || !MODULE_MANAGER.getModule(RotationManagerModule.class).moveFix.get()) return;
 
         this.setYaw(originalYaw);
         ((LivingEntityAccessor) this).setBodyYaw(originalBodyYaw);
@@ -51,7 +53,7 @@ public abstract class MixinLivingEntity extends Entity {
 
     @ModifyVariable(method = "travel", at = @At("HEAD"), ordinal = 0)
     private Vec3d modifyMovementInput(Vec3d movementInput) {
-        if ((Object)this != MinecraftClient.getInstance().player || !ROTATION_MANAGER.isRotating()) return movementInput;
+        if ((Object)this != MinecraftClient.getInstance().player || !ROTATION_MANAGER.isRotating() || !MODULE_MANAGER.getModule(RotationManagerModule.class).moveFix.get()) return movementInput;
         if (movementInput.lengthSquared() < 1e-4) return movementInput;
 
         float realYaw = originalYaw;
