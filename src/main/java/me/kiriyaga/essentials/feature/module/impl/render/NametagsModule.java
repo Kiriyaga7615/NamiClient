@@ -77,14 +77,14 @@ public class NametagsModule extends Module {
                 if ((player == MINECRAFT.player && !freecamModule.isEnabled()) || player.isRemoved())
                     continue;
 
-                renderNametag2D(player, formatter.formatPlayer(player), color, camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getDynamicDeltaTicks());
+                renderNametag2D(player, formatter.formatPlayer(player), color, camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
             }
         }
 
         if (showAnimals.get()) {
             for (Entity animal : ENTITY_MANAGER.getPassive()) {
                 if (!animal.isAlive()) continue;
-                renderNametag2D(animal, formatter.formatEntity(animal), COLOR_PASSIVE.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getDynamicDeltaTicks());
+                renderNametag2D(animal, formatter.formatEntity(animal), COLOR_PASSIVE.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
             }
         }
 
@@ -99,13 +99,16 @@ public class NametagsModule extends Module {
             for (Entity neutral : ENTITY_MANAGER.getNeutral()) {
                 if (!neutral.isAlive()) continue;
                 renderNametag2D(neutral, formatter.formatEntity(neutral), COLOR_NEUTRAL.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getDynamicDeltaTicks());
+            for (Entity hostile : EntityUtils.getEntities(EntityUtils.EntityTypeCategory.HOSTILE)) {
+                if (hostile.isRemoved()) continue;
+                renderNametag2D(hostile, formatter.formatEntity(hostile), 0xFFFF5555, camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
             }
         }
 
         if (showItems.get()) {
             for (ItemEntity item : ENTITY_MANAGER.getDroppedItems()) {
                 if (item.isRemoved() || item.getStack().isEmpty()) continue;
-                renderNametag2D(item, formatter.formatItem(item), COLOR_ITEM.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getDynamicDeltaTicks());
+                renderNametag2D(item, formatter.formatItem(item), COLOR_ITEM.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
             }
         }
     }

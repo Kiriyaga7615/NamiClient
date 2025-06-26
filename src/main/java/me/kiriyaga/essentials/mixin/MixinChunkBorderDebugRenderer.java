@@ -26,7 +26,7 @@ public abstract class MixinChunkBorderDebugRenderer {
 
         if (!freecamModule.isEnabled()) return chunkPos;
 
-        float delta = client.getRenderTickCounter().getTickProgress(true);
+        float delta = client.getRenderTickCounter().getTickDelta(true);
 
         double interpolatedX = freecamModule.prevPos.x + (freecamModule.pos.x - freecamModule.prevPos.x) * delta;
         double interpolatedZ = freecamModule.prevPos.z + (freecamModule.pos.z - freecamModule.prevPos.z) * delta;

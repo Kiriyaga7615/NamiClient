@@ -172,7 +172,7 @@ public class SearchModule extends Module {
                         state,
                         new Color(color.getRed(), color.getGreen(), color.getBlue(), 60),
                         color,
-                        lineWidth.get(),
+                        lineWidth.get().floatValue(),
                         filled.get()
                 );
             }

@@ -1,49 +1,24 @@
+package me.kiriyaga.essentials.util.render;
+
+import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.block.BlockState;
+import net.minecraft.client.gl.ShaderProgramKeys;
+import net.minecraft.client.render.*;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
+import net.minecraft.util.math.RotationAxis;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.World;
+
+import java.awt.*;
+
 /*
  * Originally taken from https://github.com/mioclient/ oyvey-ported since im lazy to write my own renderers
  * Please take a note that this code can be sublicensed by its owner
  */
 
-package me.kiriyaga.essentials.util.render;
-
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
-import net.minecraft.block.BlockState;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.render.*;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.item.ItemDisplayContext;
-import net.minecraft.item.ItemStack;
-import net.minecraft.text.Text;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.RotationAxis;
-import net.minecraft.util.math.Vec3d;
-import com.mojang.blaze3d.systems.RenderSystem;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.render.Camera;
-import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.text.Text;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.math.RotationAxis;
-import net.minecraft.util.shape.VoxelShape;
-import net.minecraft.world.World;
-import org.joml.Matrix4f;
-import org.joml.Quaternionf;
-import org.joml.Vector3f;
-import net.minecraft.client.color.block.BlockColors;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.block.BlockState;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.BlockRenderView;
-import org.lwjgl.opengl.GL11;
-
-import static me.kiriyaga.essentials.Essentials.*;
-import java.awt.*;
+import static me.kiriyaga.essentials.Essentials.MINECRAFT;
 
 public class RenderUtil {
 
@@ -116,6 +91,9 @@ public class RenderUtil {
         float g = (float) (color >> 16 & 255) / 255.0F;
         float h = (float) (color >> 8 & 255) / 255.0F;
         float j = (float) (color & 255) / 255.0F;
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
 
         BufferBuilder bufferBuilder = Tessellator.getInstance()
                 .begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
@@ -124,10 +102,13 @@ public class RenderUtil {
         bufferBuilder.vertex(matrix.peek().getPositionMatrix(), x2, y1, 0.0F).color(g, h, j, f);
         bufferBuilder.vertex(matrix.peek().getPositionMatrix(), x1, y1, 0.0F).color(g, h, j, f);
 
-        Layers.getGlobalQuads().draw(bufferBuilder.end());
+        BufferRenderer.drawWithGlobalProgram(bufferBuilder.end());
+        RenderSystem.disableBlend();
     }
 
     // 3d
+
+
     public static void drawBoxFilled(MatrixStack stack, Box box, Color c) {
         float minX = (float) (box.minX - MINECRAFT.getEntityRenderDispatcher().camera.getPos().getX());
         float minY = (float) (box.minY - MINECRAFT.getEntityRenderDispatcher().camera.getPos().getY());
@@ -136,8 +117,14 @@ public class RenderUtil {
         float maxY = (float) (box.maxY - MINECRAFT.getEntityRenderDispatcher().camera.getPos().getY());
         float maxZ = (float) (box.maxZ - MINECRAFT.getEntityRenderDispatcher().camera.getPos().getZ());
 
+        Tessellator tessellator = Tessellator.getInstance();
+
+        setup3D();
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+
         BufferBuilder bufferBuilder = Tessellator.getInstance()
                 .begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+
         bufferBuilder.vertex(stack.peek().getPositionMatrix(), minX, minY, minZ).color(c.getRGB());
         bufferBuilder.vertex(stack.peek().getPositionMatrix(), maxX, minY, minZ).color(c.getRGB());
         bufferBuilder.vertex(stack.peek().getPositionMatrix(), maxX, minY, maxZ).color(c.getRGB());
@@ -168,7 +155,8 @@ public class RenderUtil {
         bufferBuilder.vertex(stack.peek().getPositionMatrix(), minX, maxY, maxZ).color(c.getRGB());
         bufferBuilder.vertex(stack.peek().getPositionMatrix(), minX, maxY, minZ).color(c.getRGB());
 
-        Layers.getGlobalQuads().draw(bufferBuilder.end());
+        BufferRenderer.drawWithGlobalProgram(bufferBuilder.end());
+        clean3D();
     }
 
     public static void drawBoxFilled(MatrixStack stack, Vec3d vec, Color c) {
@@ -179,75 +167,29 @@ public class RenderUtil {
         drawBoxFilled(stack, new Box(bp), c);
     }
 
-    public static void drawBox(MatrixStack stack, Box box, Color fillColor, Color lineColor, double lineWidth, boolean filled, boolean outline) {
-        if (filled) {
-            drawBoxFilled(stack, box, fillColor);
-        }
-        if (outline) {
-            drawBox(stack, box, lineColor, lineWidth);
-        }
-    }
-
-    public static void drawBlockShape(MatrixStack matrices, World world, BlockPos pos, BlockState state,
-                                      Color fillColor, Color lineColor, double lineWidth, boolean filled) {
-
-        VoxelShape shape = state.getOutlineShape(world, pos);
-
-        shape.forEachBox((minX, minY, minZ, maxX, maxY, maxZ) -> {
-            Box box = new Box(
-                    pos.getX() + minX,
-                    pos.getY() + minY,
-                    pos.getZ() + minZ,
-                    pos.getX() + maxX,
-                    pos.getY() + maxY,
-                    pos.getZ() + maxZ
-            );
-
-            if (filled) {
-                drawBoxFilled(matrices, box, fillColor);
-            }
-            drawBox(matrices, box, lineColor, lineWidth);
-        });
-    }
-
-    public static Color getBlockColor(BlockState state, BlockRenderView world, BlockPos pos) {
-        BlockColors blockColors = MinecraftClient.getInstance().getBlockColors();
-        int colorInt = blockColors.getColor(state, world, pos, 0);
-
-        return new Color(colorInt, true);
-    }
-
-
     public static void drawBox(MatrixStack stack, Box box, Color c, double lineWidth) {
-        Camera camera = MINECRAFT.getEntityRenderDispatcher().camera;
+        float minX = (float) (box.minX - MINECRAFT.getEntityRenderDispatcher().camera.getPos().getX());
+        float minY = (float) (box.minY - MINECRAFT.getEntityRenderDispatcher().camera.getPos().getY());
+        float minZ = (float) (box.minZ - MINECRAFT.getEntityRenderDispatcher().camera.getPos().getZ());
+        float maxX = (float) (box.maxX - MINECRAFT.getEntityRenderDispatcher().camera.getPos().getX());
+        float maxY = (float) (box.maxY - MINECRAFT.getEntityRenderDispatcher().camera.getPos().getY());
+        float maxZ = (float) (box.maxZ - MINECRAFT.getEntityRenderDispatcher().camera.getPos().getZ());
 
-        float minX = (float) (box.minX - camera.getPos().getX());
-        float minY = (float) (box.minY - camera.getPos().getY());
-        float minZ = (float) (box.minZ - camera.getPos().getZ());
-        float maxX = (float) (box.maxX - camera.getPos().getX());
-        float maxY = (float) (box.maxY - camera.getPos().getY());
-        float maxZ = (float) (box.maxZ - camera.getPos().getZ());
+        setup3D();
+        RenderSystem.lineWidth(( float ) lineWidth);
+        RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_LINES);
 
-        Vec3d center = box.getCenter();
-        double distance = camera.getPos().distanceTo(center);
-
-        double minThickness = 0.5;
-        double maxThickness = lineWidth;
-        double scaleFactor = 5.0;
-
-        double scaledLineWidth = maxThickness / (1.0 + (distance / scaleFactor));
-        scaledLineWidth = Math.max(scaledLineWidth, minThickness);
+        RenderSystem.defaultBlendFunc();
 
         BufferBuilder bufferBuilder = Tessellator.getInstance()
-                .begin(VertexFormat.DrawMode.LINES, VertexFormats.POSITION_COLOR_NORMAL);
+                .begin(VertexFormat.DrawMode.LINES, VertexFormats.LINES);
 
         VertexRendering.drawBox(stack, bufferBuilder, minX, minY, minZ, maxX, maxY, maxZ,
                 c.getRed() / 255f, c.getGreen() / 255f, c.getBlue() / 255f, c.getAlpha() / 255f);
 
-        Layers.getGlobalLines(scaledLineWidth).draw(bufferBuilder.end());
+        BufferRenderer.drawWithGlobalProgram(bufferBuilder.end());
+        clean3D();
     }
-
-
 
     public static void drawBox(MatrixStack stack, Vec3d vec, Color c, double lineWidth) {
         drawBox(stack, Box.from(vec), c, lineWidth);
@@ -266,41 +208,37 @@ public class RenderUtil {
         return matrices;
     }
 
-    public static void drawText2D(
-            DrawContext drawContext,
-            Text text,
-            int x,
-            int y,
-            int color,
-            boolean withBackground
-    ) {
-        if (withBackground) {
-            int padding = 2;
-            int textWidth = MINECRAFT.textRenderer.getWidth(text);
-            int textHeight = MINECRAFT.textRenderer.fontHeight;
-            int bgColor = (180 << 24) | 0x000000;
-            drawContext.fill(x - padding, y - padding, x + textWidth + padding, y + textHeight + padding, bgColor);
+    public static void setup() {
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+    }
+
+    public static void setup3D() {
+        setup();
+        RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
+        RenderSystem.disableCull();
+    }
+
+    public static void clean() {
+        RenderSystem.disableBlend();
+    }
+
+    public static void clean3D() {
+        clean();
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthMask(true);
+        RenderSystem.enableCull();
+    }
+
+    public static void drawBlockShape(MatrixStack matrices, World world, BlockPos pos, BlockState state,
+                                      Color fillColor, Color outlineColor, float lineWidth, boolean filled) {
+        Box box = state.getOutlineShape(world, pos).getBoundingBox().offset(pos.getX(), pos.getY(), pos.getZ());
+
+        if (filled) {
+            drawBoxFilled(matrices, box, fillColor);
         }
-        drawContext.drawText(MINECRAFT.textRenderer, text, x, y, color, false);
+        drawBox(matrices, box, outlineColor, lineWidth);
     }
-
-    public static void drawItem2D(
-            DrawContext drawContext,
-            ItemStack stack,
-            int x,
-            int y,
-            float scale
-    ) {
-        MatrixStack matrices = drawContext.getMatrices();
-        matrices.push();
-
-        matrices.translate(x, y, 0);
-        matrices.scale(scale, scale, 1f);
-
-        drawContext.drawItem(stack, -8, -8);
-
-        matrices.pop();
-    }
-
 
 }
