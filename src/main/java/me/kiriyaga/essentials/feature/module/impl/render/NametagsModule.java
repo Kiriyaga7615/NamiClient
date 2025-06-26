@@ -91,26 +91,24 @@ public class NametagsModule extends Module {
         if (showEnemies.get()) {
             for (Entity hostile : ENTITY_MANAGER.getHostile()) {
                 if (!hostile.isAlive()) continue;
-                renderNametag2D(hostile, formatter.formatEntity(hostile), COLOR_HOSTILE.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getDynamicDeltaTicks());
+                renderNametag2D(hostile, formatter.formatEntity(hostile), COLOR_HOSTILE.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
             }
         }
 
         if (showNeutrals.get()) {
             for (Entity neutral : ENTITY_MANAGER.getNeutral()) {
                 if (!neutral.isAlive()) continue;
-                renderNametag2D(neutral, formatter.formatEntity(neutral), COLOR_NEUTRAL.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getDynamicDeltaTicks());
-            for (Entity hostile : EntityUtils.getEntities(EntityUtils.EntityTypeCategory.HOSTILE)) {
-                if (hostile.isRemoved()) continue;
-                renderNametag2D(hostile, formatter.formatEntity(hostile), 0xFFFF5555, camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
+                renderNametag2D(neutral, formatter.formatEntity(neutral), COLOR_NEUTRAL.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
             }
         }
 
-        if (showItems.get()) {
-            for (ItemEntity item : ENTITY_MANAGER.getDroppedItems()) {
-                if (item.isRemoved() || item.getStack().isEmpty()) continue;
-                renderNametag2D(item, formatter.formatItem(item), COLOR_ITEM.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
+            if (showItems.get()) {
+                for (ItemEntity item : ENTITY_MANAGER.getDroppedItems()) {
+                    if (item.isRemoved() || item.getStack().isEmpty()) continue;
+                    renderNametag2D(item, formatter.formatItem(item), COLOR_ITEM.getRGB(), camera, drawContext, MatrixCache.positionMatrix, MatrixCache.projectionMatrix, event.getRenderTickCounter().getTickDelta(true));
+                }
             }
-        }
+
     }
 
     private void renderNametag2D(Entity entity, Text text, int color,
