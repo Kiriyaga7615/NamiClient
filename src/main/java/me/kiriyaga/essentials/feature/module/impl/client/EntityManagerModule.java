@@ -11,7 +11,7 @@ import me.kiriyaga.essentials.setting.impl.IntSetting;
 public class EntityManagerModule extends Module {
 
     public final IntSetting maxIdleTicks = addSetting(new IntSetting("max idle ticks", 500, 250, 750));
-    public final DoubleSetting targetRange = addSetting(new DoubleSetting("target range", 7.0, 1.0, 16.0));
+    public final DoubleSetting targetRange = addSetting(new DoubleSetting("target range", 3.0, 1.0, 6.0));
     public final DoubleSetting minTicksExisted = addSetting(new DoubleSetting("target age", 12, 0.0, 20.0));
     public final BoolSetting targetPlayers = addSetting(new BoolSetting("target players", true));
     public final BoolSetting targetHostiles = addSetting(new BoolSetting("target hostiles", true));

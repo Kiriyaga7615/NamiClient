@@ -39,6 +39,8 @@ public class RotationManager {
     public float lastSentSpoofYaw;
     public float lastSentSpoofPitch;
 
+    public float lastSentSpoofYaw2;
+    public float lastSentSpoofPitch2;
 
     private boolean spoofing = false;
 
@@ -61,20 +63,6 @@ public class RotationManager {
         if (wasActive) {
             activeRequest = request;
         }
-    }
-
-    public boolean hasRequest(String id) {
-        if (activeRequest != null && Objects.equals(activeRequest.id, id)) {
-            return true;
-        }
-
-        for (RotationRequest r : requests) {
-            if (Objects.equals(r.id, id)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
 
