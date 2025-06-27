@@ -77,22 +77,12 @@ public class AuraModule extends Module {
 
         float ticksUntilReady = (1.0f - cooldown) * tps;
         if (ticksUntilReady <= preRotate.get() * tps) {
-            boolean alreadyRequested = ROTATION_MANAGER.hasRequest(AuraModule.class.getName());
-
-            if (!alreadyRequested) {
                 ROTATION_MANAGER.submitRequest(new RotationManager.RotationRequest(
                         AuraModule.class.getName(),
                         rotationPriority.get(),
-                        () -> {
-                            Vec3d lookPos = getClosestPointToEye(MINECRAFT.player.getEyePos(), target.getBoundingBox());
-                            return (float) getYawToVec(MINECRAFT.player, lookPos);
-                        },
-                        () -> {
-                            Vec3d lookPos = getClosestPointToEye(MINECRAFT.player.getEyePos(), target.getBoundingBox());
-                            return (float) getPitchToVec(MINECRAFT.player, lookPos);
-                        }
+                        (float) getYawToVec(MINECRAFT.player, getClosestPointToEye(MINECRAFT.player.getEyePos(), target.getBoundingBox())),
+                        (float) getPitchToVec(MINECRAFT.player, getClosestPointToEye(MINECRAFT.player.getEyePos(), target.getBoundingBox()))
                 ));
-            }
         }
 
 
