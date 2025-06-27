@@ -71,37 +71,37 @@ public abstract class MixinGameRenderer {
             double x = cameraE.getX();
             double y = cameraE.getY();
             double z = cameraE.getZ();
-            double lastX = cameraE.lastX;
-            double lastY = cameraE.lastY;
-            double lastZ = cameraE.lastZ;
+            double lastX = cameraE.prevX;
+            double lastY = cameraE.prevY;
+            double lastZ = cameraE.prevZ;
             float yaw = cameraE.getYaw();
             float pitch = cameraE.getPitch();
-            float lastYaw = cameraE.lastYaw;
-            float lastPitch = cameraE.lastPitch;
+            float lastYaw = cameraE.prevYaw;
+            float lastPitch = cameraE.prevPitch;
 
             cameraE.setPos(freecamModule.getX(), freecamModule.getY() - cameraE.getEyeHeight(cameraE.getPose()), freecamModule.getZ());
 
-            cameraE.lastX = freecamModule.prevPos.x;
-            cameraE.lastY = freecamModule.prevPos.y - cameraE.getEyeHeight(cameraE.getPose());
-            cameraE.lastZ = freecamModule.prevPos.z;
+            cameraE.prevX = freecamModule.prevPos.x;
+            cameraE.prevY = freecamModule.prevPos.y - cameraE.getEyeHeight(cameraE.getPose());
+            cameraE.prevZ = freecamModule.prevPos.z;
 
             cameraE.setYaw(freecamModule.yaw);
             cameraE.setPitch(freecamModule.pitch);
-            cameraE.lastYaw = freecamModule.lastYaw;
-            cameraE.lastPitch = freecamModule.lastPitch;
+            cameraE.prevYaw = freecamModule.lastYaw;
+            cameraE.prevPitch = freecamModule.lastPitch;
 
             freecamSet = true;
             updateCrosshairTarget(tickDelta);
             freecamSet = false;
 
             cameraE.setPos(x, y, z);
-            cameraE.lastX = lastX;
-            cameraE.lastY = lastY;
-            cameraE.lastZ = lastZ;
+            cameraE.prevX = lastX;
+            cameraE.prevY = lastY;
+            cameraE.prevZ = lastZ;
             cameraE.setYaw(yaw);
             cameraE.setPitch(pitch);
-            cameraE.lastYaw = lastYaw;
-            cameraE.lastPitch = lastPitch;
+            cameraE.prevYaw = lastYaw;
+            cameraE.prevPitch = lastPitch;
         }
     }
 

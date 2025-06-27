@@ -39,6 +39,8 @@ public class RotationManager {
     public float lastSentSpoofYaw;
     public float lastSentSpoofPitch;
 
+    public float lastSentSpoofYaw2;
+    public float lastSentSpoofPitch2;
 
     private boolean spoofing = false;
 
@@ -61,20 +63,6 @@ public class RotationManager {
         if (wasActive) {
             activeRequest = request;
         }
-    }
-
-    public boolean hasRequest(String id) {
-        if (activeRequest != null && Objects.equals(activeRequest.id, id)) {
-            return true;
-        }
-
-        for (RotationRequest r : requests) {
-            if (Objects.equals(r.id, id)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
 
@@ -255,11 +243,9 @@ public class RotationManager {
             if (packet instanceof PlayerMoveC2SPacket.Full full) {
                 event.cancel();
                 mc.getNetworkHandler().sendPacket(new PlayerMoveC2SPacket.Full(
-                        new Vec3d(
-                                full.getX(pos.x),
-                                full.getY(pos.y),
-                                full.getZ(pos.z)
-                        ),
+                        full.getX(pos.x),
+                        full.getY(pos.y),
+                        full.getZ(pos.z),
                         spoofYaw,
                         spoofPitch,
                         full.isOnGround(),

@@ -18,7 +18,6 @@ import static me.kiriyaga.essentials.Essentials.MINECRAFT;
 public class SprintModule extends Module {
 
     private final BoolSetting keepSprint = addSetting(new BoolSetting("keep sprint", true));
-    private final BoolSetting inLiquid = addSetting(new BoolSetting("in liquid", true));
 
     public SprintModule() {
         super("sprint", "Automatically makes you sprint while moving forward.", Category.MOVEMENT);
@@ -29,17 +28,13 @@ public class SprintModule extends Module {
         if (!isEnabled()) return;
 
         ClientPlayerEntity player = MINECRAFT.player;
-        if (player == null) return;
+        if (player == null || player.isSubmergedInWater() || player.isTouchingWater()) return;
 
-        if (!inLiquid.get() && (player.isSubmergedInWater() || player.isTouchingWater()))
-            return;
-
-
-        if (player.forwardSpeed > 0 && !player.hasVehicle()) {
-            player.setSprinting(true);
-        } else {
-            player.setSprinting(false);
-        }
+                if (player.forwardSpeed > 0 && !player.hasVehicle()) {
+                    player.setSprinting(true);
+                } else {
+                    player.setSprinting(false);
+                }
     }
 
     @SubscribeEvent(priority = EventPriority.LOW)
