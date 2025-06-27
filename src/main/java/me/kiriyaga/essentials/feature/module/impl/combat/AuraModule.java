@@ -44,13 +44,6 @@ public class AuraModule extends Module {
         super("aura", "Attack entities for you.", Category.COMBAT, "killaura", "ara", "killara", "фгкф");
     }
 
-    @Override
-    public void onDisable() {
-        currentTarget = null;
-        ROTATION_MANAGER.cancelRequest(AuraModule.class.getName());
-    }
-
-
     @SubscribeEvent(priority = EventPriority.HIGH)
     public void onTick(PreTickEvent event) {
         if (MINECRAFT.player == null || MINECRAFT.world == null) return;
@@ -62,20 +55,8 @@ public class AuraModule extends Module {
         }
 
         Entity target = ENTITY_MANAGER.getTarget();
-
         if (target == null) {
             currentTarget = null;
-            ROTATION_MANAGER.cancelRequest(AuraModule.class.getName());
-            return;
-        }
-        double eyeDistance = getClosestEyeDistance(MINECRAFT.player.getEyePos(), target.getBoundingBox());
-
-        boolean inRotateRange = eyeDistance <= rotateRange.get();
-        boolean inAttackRange = eyeDistance <= attackRange.get();
-
-        if (!inRotateRange) {
-            currentTarget = null;
-            ROTATION_MANAGER.cancelRequest(AuraModule.class.getName());
             return;
         }
 
